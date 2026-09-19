@@ -4,6 +4,8 @@ import { assetUrl, ApiError } from "../api/client";
 import type { Cart, Product, Selection } from "../api/types";
 import { formatPrice, resolveVariant } from "../domain/variants";
 import { useAddCartItem, useCart, useProduct } from "../hooks/use-store";
+import { Button } from "./ui/button";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "./ui/sheet";
 import { OptionGroup } from "./OptionGroup";
 
 interface Attempt { idempotencyKey: string; skuId: string; quantity: number; }
@@ -32,7 +34,7 @@ export function ProductPage() {
   }, [variant.kind, variant.kind === "available" ? variant.sku.available_quantity : 0]);
 
   if (productQuery.isPending) return <main className="page-state" aria-busy="true">Loading the product…</main>;
-  if (productQuery.isError || !product) return <main className="page-state" role="alert"><p>We could not load this product.</p><button type="button" onClick={() => void productQuery.refetch()}>Try again</button></main>;
+  if (productQuery.isError || !product) return <main className="page-state" role="alert"><p>We could not load this product.</p><Button type="button" onClick={() => void productQuery.refetch()}>Try again</Button></main>;
 
   const mutationError = addMutation.error;
   const errorText = mutationError instanceof ApiError ? mutationError.message : mutationError ? "The request may not have reached the server. Retrying will use the same safe request key." : null;
@@ -46,21 +48,20 @@ export function ProductPage() {
     addMutation.mutate(attempt, { onSuccess: () => { retryAttempt.current = null; } });
   }
 
-  return <main className="app-shell">
-    <header className="store-header"><a className="brand" href="#product">RIDGE RUNNER</a><p>Trail essentials</p><button className="cart-summary" type="button" aria-label={`Cart contains ${cartQuery.data?.item_count ?? 0} items`} aria-expanded={isCartOpen} aria-controls="cart-drawer" onClick={() => setIsCartOpen(true)}>Bag · {cartQuery.data?.item_count ?? "—"}</button></header>
+  return <Sheet open={isCartOpen} onOpenChange={setIsCartOpen}><main className="app-shell">
+    <header className="store-header"><a className="brand" href="#product">RIDGE RUNNER</a><p>Trail essentials</p><SheetTrigger asChild><Button variant="ghost" className="cart-summary" aria-label={`Cart contains ${cartQuery.data?.item_count ?? 0} items`}>Bag · {cartQuery.data?.item_count ?? "—"}</Button></SheetTrigger></header>
     <section className="product-page" id="product" aria-label={product.name}>
       <ProductGallery product={product} selectedSku={selectedSku} />
       <section className="product-panel">
         <p className="kicker">Trail running · SS26</p><h1>{product.name}</h1><p className="description">{product.description}</p><p className="price">{selectedSku ? formatPrice(selectedSku.price_cents) : "Select options"}</p>
         <div className="options">{product.options.map((option) => <OptionGroup key={option.id} option={option} skus={product.skus} selection={selection} onChange={(value) => updateSelection(option.id, value)} />)}</div>
         <p className={`stock-status ${variant.kind}`} aria-live="polite">{getStatus(variant.kind, selectedSku?.available_quantity)}</p>
-        <div className="purchase-row"><label className="quantity-control"><span className="visually-hidden">Quantity</span><button type="button" aria-label="Decrease quantity" onClick={() => updateQuantity(quantity - 1)} disabled={quantity <= 1 || addMutation.isPending}>−</button><input aria-label="Quantity" type="number" min="1" max={selectedSku?.available_quantity ?? 1} value={quantity} disabled={variant.kind !== "available" || addMutation.isPending} onChange={(event) => updateQuantity(Number(event.target.value))} /><button type="button" aria-label="Increase quantity" onClick={() => updateQuantity(quantity + 1)} disabled={variant.kind !== "available" || quantity >= (selectedSku?.available_quantity ?? 1) || addMutation.isPending}>+</button></label><button className="add-button" type="button" disabled={variant.kind !== "available" || addMutation.isPending} onClick={addToCart}>{addMutation.isPending ? "Adding…" : "Add to bag"}</button></div>
+        <div className="purchase-row"><label className="quantity-control"><span className="visually-hidden">Quantity</span><Button variant="ghost" size="icon" className="h-full w-full rounded-none px-0" type="button" aria-label="Decrease quantity" onClick={() => updateQuantity(quantity - 1)} disabled={quantity <= 1 || addMutation.isPending}>−</Button><input aria-label="Quantity" type="number" min="1" max={selectedSku?.available_quantity ?? 1} value={quantity} disabled={variant.kind !== "available" || addMutation.isPending} onChange={(event) => updateQuantity(Number(event.target.value))} /><Button variant="ghost" size="icon" className="h-full w-full rounded-none px-0" type="button" aria-label="Increase quantity" onClick={() => updateQuantity(quantity + 1)} disabled={variant.kind !== "available" || quantity >= (selectedSku?.available_quantity ?? 1) || addMutation.isPending}>+</Button></label><Button size="lg" className="add-button" type="button" disabled={variant.kind !== "available" || addMutation.isPending} onClick={addToCart}>{addMutation.isPending ? "Adding…" : "Add to bag"}</Button></div>
         <div className="feedback" aria-live="polite">{addMutation.isSuccess ? <p className="success">Added to your bag. Stock is reserved.</p> : null}{errorText ? <p className="error">{errorText}</p> : null}</div>
         <dl className="product-notes"><div><dt>Delivery</dt><dd>3–5 business days</dd></div><div><dt>Returns</dt><dd>30-day returns</dd></div></dl>
       </section>
     </section>
-    {isCartOpen ? <CartDrawer cart={cartQuery.data} isLoading={cartQuery.isPending} hasError={cartQuery.isError} onClose={() => setIsCartOpen(false)} /> : null}
-  </main>;
+  </main><SheetContent side="right" className="cart-drawer"><SheetHeader className="cart-drawer-header"><SheetTitle>Your bag</SheetTitle><SheetDescription>Review the items currently reserved in your bag.</SheetDescription></SheetHeader><CartDrawerBody cart={cartQuery.data} isLoading={cartQuery.isPending} hasError={cartQuery.isError} /></SheetContent></Sheet>;
 }
 
 function ProductGallery({ product, selectedSku }: { product: Product; selectedSku?: Product["skus"][number] }) {
@@ -72,16 +73,13 @@ function ProductGallery({ product, selectedSku }: { product: Product; selectedSk
   return <section className="gallery" aria-label="Product images"><div className="gallery-grid">{galleryImages.map((image, index) => <figure className="gallery-image" key={`${image.id}-${image.url}`}><img src={assetUrl(image.url)} alt={`${product.name}, ${selectedSku?.option_values.color ?? "product"} view ${index + 1}`} /></figure>)}</div></section>;
 }
 
-function CartDrawer({ cart, isLoading, hasError, onClose }: { cart?: Cart; isLoading: boolean; hasError: boolean; onClose: () => void }) {
-  return <div className="cart-overlay" role="presentation" onClick={onClose}>
-    <aside id="cart-drawer" className="cart-drawer" role="dialog" aria-modal="true" aria-labelledby="cart-drawer-title" onClick={(event) => event.stopPropagation()}>
-      <div className="cart-drawer-header"><h2 id="cart-drawer-title">Your bag</h2><button type="button" className="cart-close" aria-label="Close bag" onClick={onClose}>×</button></div>
-      {isLoading ? <p className="cart-empty">Loading your bag…</p> : null}
-      {hasError ? <p className="cart-empty" role="alert">We could not load your bag.</p> : null}
-      {!isLoading && !hasError && cart?.items.length === 0 ? <p className="cart-empty">Your bag is empty.</p> : null}
-      {!isLoading && !hasError && cart?.items.length ? <ul className="cart-items">{cart.items.map((item) => <li key={item.sku_id} className="cart-item"><div><strong>{item.sku_id}</strong><span>Qty {item.quantity}</span></div><span>{formatPrice(item.line_total_cents)}</span></li>)}</ul> : null}
-    </aside>
-  </div>;
+function CartDrawerBody({ cart, isLoading, hasError }: { cart?: Cart; isLoading: boolean; hasError: boolean }) {
+  return <>
+    {isLoading ? <p className="cart-empty">Loading your bag…</p> : null}
+    {hasError ? <p className="cart-empty" role="alert">We could not load your bag.</p> : null}
+    {!isLoading && !hasError && cart?.items.length === 0 ? <p className="cart-empty">Your bag is empty.</p> : null}
+    {!isLoading && !hasError && cart?.items.length ? <ul className="cart-items">{cart.items.map((item) => <li key={item.sku_id} className="cart-item"><div><strong>{item.sku_id}</strong><span>Qty {item.quantity}</span></div><span>{formatPrice(item.line_total_cents)}</span></li>)}</ul> : null}
+  </>;
 }
 
 function getStatus(kind: string, available?: number): string { if (kind === "incomplete") return "Select colour and size."; if (kind === "invalid") return "This combination is unavailable."; if (kind === "out_of_stock") return "Currently out of stock."; return available === 1 ? "Only 1 item left." : `${available} items available.`; }

@@ -1,5 +1,6 @@
 import type { ProductOption, Selection, Sku } from "../api/types";
 import { isChoicePossible } from "../domain/variants";
+import { Button } from "./ui/button";
 
 interface OptionGroupProps {
   option: ProductOption;
@@ -20,7 +21,8 @@ export function OptionGroup({ option, skus, selection, onChange }: OptionGroupPr
           const selected = selection[option.id] === value;
           const possible = isChoicePossible(skus, selection, option.id, value);
           return (
-            <button
+            <Button
+              variant={selected ? "secondary" : "outline"}
               className={`option-button ${option.id === "color" ? "colour" : "size"}`}
               type="button"
               key={value}
@@ -30,7 +32,7 @@ export function OptionGroup({ option, skus, selection, onChange }: OptionGroupPr
             >
               {option.id === "color" ? <span className={`swatch ${value.toLowerCase()}`} aria-hidden="true" /> : null}
               {value}
-            </button>
+            </Button>
           );
         })}
       </div>
