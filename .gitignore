@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+*.db
+*.sqlite3
+.env
+node_modules/
+dist/
+*.tsbuildinfo
+coverage/
+*.egg-info/
+.DS_Store

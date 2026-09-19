@@ -1,0 +1,37 @@
+[project]
+name = "fullstack-interview-assessment"
+version = "0.1.0"
+description = "A production-minded full-stack interview assessment"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115,<1.0",
+  "httpx>=0.27,<1.0",
+  "sqlalchemy>=2.0,<3.0",
+  "uvicorn[standard]>=0.30,<1.0",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+# This is an assessment repository, not one distributable package. Explicitly
+# disable setuptools' flat-layout package auto-discovery for `pip install -e .`.
+[tool.setuptools]
+packages = []
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0,<9.0",
+  "pytest-asyncio>=0.24,<1.0",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.0,<9.0",
+  "pytest-asyncio>=0.24,<1.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["A/tests", "B/tests", "app/backend/tests"]
+pythonpath = [".", "app/backend"]
+asyncio_mode = "auto"

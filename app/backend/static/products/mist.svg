@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" role="img" aria-labelledby="title">
+  <title id="title">Mist Ridge Runner shoe</title>
+  <rect width="800" height="600" fill="#e7edf0"/>
+  <path d="M105 397c83-18 141-96 210-180l113 78c54 37 133 57 211 61 28 2 54 19 58 46l5 34H104z" fill="#f6f8f5"/>
+  <path d="M92 458h622c21 0 39 13 47 33H92z" fill="#6c7e86"/>
+  <path d="M297 300l75 64m-37-100l74 64m-33-94l73 62" stroke="#92a4aa" stroke-width="13" stroke-linecap="round"/>
+  <circle cx="598" cy="413" r="34" fill="#d0dadd"/>
+  <text x="105" y="112" fill="#53656d" font-family="Arial, sans-serif" font-size="30" letter-spacing="5">RIDGE RUNNER</text>
+</svg>
