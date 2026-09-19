@@ -2,7 +2,8 @@
 
 ## 假设与边界
 
-- 使用当前 Xero OAuth 2.0 API；本文不绑定某个 SDK，HTTP 客户端可以替换。
+- 使用当前 Xero OAuth 2.0 HTTP API；本文不绑定某个 SDK，HTTP 客户端可以替换。若后续引入 SDK，必须在依赖清单中固定版本，并以该版本对应的 API 文档重新验证请求模型。
+- 连接验证和会计资源请求使用 Xero 官方文档定义的 `/connections`、`xero-tenant-id` 和 Bearer 认证约定；基础 URL、资源 ID 与 API 版本作为可配置项，不写死在业务逻辑中。
 - 每个内部连接都持久化 `connection_id`、`tenant_id`、加密后的 token、同步游标和版本号。
 - 每个 worker 任务只处理一个 tenant；任何日志都以内部连接 ID 为主，而非 token。
 
@@ -30,7 +31,7 @@
 
 ## C3：可恢复的增量同步
 
-每个 tenant 有一条带版本号的同步状态记录：`last_successful_modified_at`、`cursor`、`watermark`。任务用一个有意重叠的修改时间窗口读取变更，并按分页处理：
+每个 tenant 有一条带版本号的同步状态记录：`last_successful_modified_at`、`cursor`、`watermark`。任务用一个有意重叠的修改时间窗口读取变更，并在支持的资源请求上发送 `If-Modified-Since`，按分页处理：
 
 1. 开始时记录本轮 `watermark = now()`，从上次成功水位减去小的重叠窗口读取。
 2. 每页先把发票 upsert 到内部镜像表；唯一键为 `(tenant_id, xero_invoice_id)`。

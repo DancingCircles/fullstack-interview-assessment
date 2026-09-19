@@ -1,4 +1,6 @@
-from B.fulfillment_optimizer import Warehouse, optimize
+import pytest
+
+from B.fulfillment_optimizer import Warehouse, optimize, parse_input
 
 
 def test_prompt_example_prefers_one_warehouse() -> None:
@@ -45,3 +47,24 @@ def test_large_demand_uses_minimum_count_before_cost() -> None:
     assert plan.warehouses_used == 1
     assert plan.allocations == (("A", 2000),)
 
+
+def test_optimizer_rejects_values_outside_the_assignment_constraints() -> None:
+    with pytest.raises(ValueError):
+        optimize([Warehouse("A", 2001, 0, 0)], 1)
+    with pytest.raises(ValueError):
+        optimize([Warehouse("A", 1, 1_000_001, 0)], 1)
+    with pytest.raises(ValueError):
+        optimize([Warehouse("A", 1, 0, 0)], 2001)
+    with pytest.raises(ValueError):
+        optimize([Warehouse("订单", 1, 0, 0)], 1)
+
+
+def test_parser_enforces_header_and_row_bounds() -> None:
+    with pytest.raises(ValueError):
+        parse_input(["31 1"])
+    with pytest.raises(ValueError):
+        parse_input(["1 2001", "A 1 0 0"])
+    with pytest.raises(ValueError):
+        parse_input(["1 1", "A 2001 0 0"])
+    with pytest.raises(ValueError):
+        parse_input(["1 1", "A 1 0 1000001"])

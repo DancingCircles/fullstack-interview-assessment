@@ -61,7 +61,7 @@ export function ProductPage() {
         <dl className="product-notes"><div><dt>Delivery</dt><dd>3–5 business days</dd></div><div><dt>Returns</dt><dd>30-day returns</dd></div></dl>
       </section>
     </section>
-  </main><SheetContent side="right" className="cart-drawer"><SheetHeader className="cart-drawer-header"><SheetTitle>Your bag</SheetTitle><SheetDescription>Review the items currently reserved in your bag.</SheetDescription></SheetHeader><CartDrawerBody cart={cartQuery.data} isLoading={cartQuery.isPending} hasError={cartQuery.isError} /></SheetContent></Sheet>;
+  </main><SheetContent side="right" className="cart-drawer"><SheetHeader className="cart-drawer-header"><SheetTitle>Your bag</SheetTitle><SheetDescription>Review the items currently reserved in your bag.</SheetDescription></SheetHeader><CartDrawerBody cart={cartQuery.data} isLoading={cartQuery.isPending} hasError={cartQuery.isError} isRetrying={cartQuery.isFetching} onRetry={() => void cartQuery.refetch()} /></SheetContent></Sheet>;
 }
 
 function ProductGallery({ product, selectedSku }: { product: Product; selectedSku?: Product["skus"][number] }) {
@@ -73,10 +73,10 @@ function ProductGallery({ product, selectedSku }: { product: Product; selectedSk
   return <section className="gallery" aria-label="Product images"><div className="gallery-grid">{galleryImages.map((image, index) => <figure className="gallery-image" key={`${image.id}-${image.url}`}><img src={assetUrl(image.url)} alt={`${product.name}, ${selectedSku?.option_values.color ?? "product"} view ${index + 1}`} /></figure>)}</div></section>;
 }
 
-function CartDrawerBody({ cart, isLoading, hasError }: { cart?: Cart; isLoading: boolean; hasError: boolean }) {
+function CartDrawerBody({ cart, isLoading, hasError, isRetrying, onRetry }: { cart?: Cart; isLoading: boolean; hasError: boolean; isRetrying: boolean; onRetry: () => void }) {
   return <>
     {isLoading ? <p className="cart-empty">Loading your bag…</p> : null}
-    {hasError ? <p className="cart-empty" role="alert">We could not load your bag.</p> : null}
+    {hasError ? <div className="cart-empty" role="alert"><p>We could not load your bag.</p><Button type="button" variant="outline" size="sm" onClick={onRetry} disabled={isRetrying}>{isRetrying ? "Retrying…" : "Try again"}</Button></div> : null}
     {!isLoading && !hasError && cart?.items.length === 0 ? <p className="cart-empty">Your bag is empty.</p> : null}
     {!isLoading && !hasError && cart?.items.length ? <ul className="cart-items">{cart.items.map((item) => <li key={item.sku_id} className="cart-item"><div><strong>{item.sku_id}</strong><span>Qty {item.quantity}</span></div><span>{formatPrice(item.line_total_cents)}</span></li>)}</ul> : null}
   </>;

@@ -5,6 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Iterable
 
+MAX_STOCK = 10**12
+MAX_COMMANDS = 200_000
+MAX_QUANTITY = 10**12
 
 @dataclass
 class InventoryLedger:
@@ -40,7 +43,7 @@ class InventoryLedger:
 
         command = parts[0]
         if command == "RESTOCK":
-            if len(parts) != 3:
+            if len(parts) != 3 or not _ascii_token(parts[1]):
                 return "REJECTED"
             qty = _positive_int(parts[2])
             if qty is None:
@@ -53,7 +56,7 @@ class InventoryLedger:
 
         _, _, order_id, raw_qty = parts
         qty = _positive_int(raw_qty)
-        if not order_id or qty is None:
+        if not _ascii_token(parts[1]) or not _ascii_token(order_id) or qty is None:
             return "REJECTED"
 
         current_reservation = self.reservations.get(order_id, 0)
@@ -92,23 +95,42 @@ class InventoryLedger:
         return sorted(self.reservations.items())
 
 
-def _positive_int(value: str) -> int | None:
+def _ascii_token(value: str) -> bool:
+    return bool(value) and all(0x21 <= ord(character) <= 0x7E for character in value)
+
+
+def _positive_int(value: str, *, maximum: int = MAX_QUANTITY) -> int | None:
+    if not value or not value.isascii() or not value.isdecimal():
+        return None
     try:
         parsed = int(value)
     except ValueError:
         return None
-    return parsed if parsed > 0 else None
+    return parsed if 0 < parsed <= maximum else None
+
+
+def _non_negative_int(value: str, *, maximum: int) -> int | None:
+    if not value or not value.isascii() or not value.isdecimal():
+        return None
+    try:
+        parsed = int(value)
+    except ValueError:
+        return None
+    return parsed if parsed <= maximum else None
 
 
 def process_input(lines: Iterable[str]) -> list[str]:
     iterator = iter(lines)
     try:
         header = next(iterator).split()
-        initial_stock, command_count = map(int, header)
+        if len(header) != 2:
+            raise ValueError
+        initial_stock = _non_negative_int(header[0], maximum=MAX_STOCK)
+        command_count = _positive_int(header[1], maximum=MAX_COMMANDS)
+        if initial_stock is None or command_count is None:
+            raise ValueError
     except (StopIteration, ValueError):
         raise ValueError("Expected header: initial_stock command_count") from None
-    if initial_stock < 0 or command_count < 1:
-        raise ValueError("Initial stock must be non-negative and command count positive")
 
     ledger = InventoryLedger(on_hand=initial_stock)
     output: list[str] = []
@@ -134,4 +156,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

@@ -13,6 +13,10 @@ from dataclasses import dataclass
 from typing import Iterable
 
 INF = 10**15
+MAX_WAREHOUSES = 30
+MAX_DEMAND = 2_000
+MAX_STOCK = 2_000
+MAX_COST = 10**6
 
 
 @dataclass(frozen=True)
@@ -32,8 +36,9 @@ class AllocationPlan:
 
 def optimize(warehouses: Iterable[Warehouse], demand: int) -> AllocationPlan | None:
     """Return the plan ordered by count, cost, then output-list lexicography."""
-    items = sorted(warehouses, key=lambda warehouse: warehouse.warehouse_id)
+    items = list(warehouses)
     _validate(items, demand)
+    items.sort(key=lambda warehouse: warehouse.warehouse_id)
     if sum(item.stock for item in items) < demand:
         return None
 
@@ -148,28 +153,69 @@ def _reconstruct_lexicographically_smallest(
 
 
 def _validate(items: list[Warehouse], demand: int) -> None:
-    if demand < 1:
-        raise ValueError("Demand must be positive")
+    if not 1 <= len(items) <= MAX_WAREHOUSES:
+        raise ValueError(f"Warehouse count must be between 1 and {MAX_WAREHOUSES}")
+    if not isinstance(demand, int) or isinstance(demand, bool) or not 1 <= demand <= MAX_DEMAND:
+        raise ValueError(f"Demand must be between 1 and {MAX_DEMAND}")
     ids = [item.warehouse_id for item in items]
+    if any(not isinstance(warehouse_id, str) or not _ascii_token(warehouse_id) for warehouse_id in ids):
+        raise ValueError("Warehouse ids must be non-empty printable ASCII tokens")
     if len(ids) != len(set(ids)):
         raise ValueError("Warehouse ids must be unique")
     for item in items:
-        if not item.warehouse_id or min(item.stock, item.fixed_cost, item.unit_cost) < 0:
-            raise ValueError("Warehouse values must be non-negative and ids non-empty")
+        if not _bounded_int(item.stock, maximum=MAX_STOCK):
+            raise ValueError(f"Stock must be between 0 and {MAX_STOCK}")
+        if not _bounded_int(item.fixed_cost, maximum=MAX_COST) or not _bounded_int(
+            item.unit_cost, maximum=MAX_COST
+        ):
+            raise ValueError(f"Costs must be between 0 and {MAX_COST}")
+
+
+def _ascii_token(value: str) -> bool:
+    return bool(value) and all(0x21 <= ord(character) <= 0x7E for character in value)
+
+
+def _bounded_int(value: object, *, maximum: int) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and 0 <= value <= maximum
+
+
+def _parse_int_token(value: str, *, minimum: int, maximum: int) -> int:
+    if not value or not value.isascii() or not value.isdecimal():
+        raise ValueError
+    parsed = int(value)
+    if not minimum <= parsed <= maximum:
+        raise ValueError
+    return parsed
 
 
 def parse_input(lines: Iterable[str]) -> tuple[list[Warehouse], int]:
     iterator = iter(lines)
     try:
-        warehouse_count, demand = map(int, next(iterator).split())
+        header = next(iterator).split()
+        if len(header) != 2:
+            raise ValueError
+        warehouse_count = _parse_int_token(header[0], minimum=1, maximum=MAX_WAREHOUSES)
+        demand = _parse_int_token(header[1], minimum=1, maximum=MAX_DEMAND)
     except (StopIteration, ValueError):
         raise ValueError("Expected header: warehouse_count demand") from None
 
     warehouses: list[Warehouse] = []
     for _ in range(warehouse_count):
         try:
-            warehouse_id, stock, fixed_cost, unit_cost = next(iterator).split()
-            warehouses.append(Warehouse(warehouse_id, int(stock), int(fixed_cost), int(unit_cost)))
+            parts = next(iterator).split()
+            if len(parts) != 4:
+                raise ValueError
+            warehouse_id, raw_stock, raw_fixed_cost, raw_unit_cost = parts
+            if not _ascii_token(warehouse_id):
+                raise ValueError
+            warehouses.append(
+                Warehouse(
+                    warehouse_id,
+                    _parse_int_token(raw_stock, minimum=0, maximum=MAX_STOCK),
+                    _parse_int_token(raw_fixed_cost, minimum=0, maximum=MAX_COST),
+                    _parse_int_token(raw_unit_cost, minimum=0, maximum=MAX_COST),
+                )
+            )
         except (StopIteration, ValueError):
             raise ValueError("Expected: warehouse_id stock fixed_cost unit_cost") from None
     return warehouses, demand
@@ -190,4 +236,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

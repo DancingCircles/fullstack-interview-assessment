@@ -163,6 +163,8 @@ The assignment explicitly excludes auth, checkout and payments. The cart is ther
 
 `InventoryLedger` processes each command once with hash sets/maps for processed event IDs and open order reservations. It validates before mutation and records a syntactically addressable rejected event as processed, so retries are deterministic.
 
+The parser enforces the assignment limits (`0 <= S <= 10^12`, `1 <= N <= 200,000`, and `1 <= qty <= 10^12`) and requires event/order IDs to be printable ASCII tokens. Task B similarly enforces `W <= 30`, `Q <= 2,000`, `stock <= 2,000`, and cost values up to `10^6` before running the optimizer.
+
 - Time: **O(N)**
 - Space: **O(E + O)** for processed event IDs and open orders
 

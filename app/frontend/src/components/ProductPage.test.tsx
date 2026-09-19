@@ -14,13 +14,13 @@ const product = {
     { id: "size" as const, label: "EU size", values: ["40", "41"] }
   ],
   images: [
-    { id: "mist", url: "/products/mist.svg" },
-    { id: "clay", url: "/products/clay.svg" }
+    { id: "mist", url: "/products/mist.png" },
+    { id: "clay", url: "/products/clay.png" }
   ],
   skus: [
-    { id: "mist-40", option_values: { color: "Mist" as const, size: "40" }, price_cents: 12900, available_quantity: 2, image_url: "/products/mist.svg" },
-    { id: "mist-41", option_values: { color: "Mist" as const, size: "41" }, price_cents: 12900, available_quantity: 2, image_url: "/products/mist.svg" },
-    { id: "clay-41", option_values: { color: "Clay" as const, size: "41" }, price_cents: 13400, available_quantity: 2, image_url: "/products/clay.svg" }
+    { id: "mist-40", option_values: { color: "Mist" as const, size: "40" }, price_cents: 12900, available_quantity: 2, image_url: "/products/mist.png" },
+    { id: "mist-41", option_values: { color: "Mist" as const, size: "41" }, price_cents: 12900, available_quantity: 2, image_url: "/products/mist.png" },
+    { id: "clay-41", option_values: { color: "Clay" as const, size: "41" }, price_cents: 13400, available_quantity: 2, image_url: "/products/clay.png" }
   ]
 };
 
@@ -81,10 +81,10 @@ describe("ProductPage", () => {
     renderPage();
 
     await screen.findByRole("heading", { name: "Ridge Runner" });
-    expect(screen.getAllByRole("img")[0]).toHaveAttribute("src", "/products/mist.svg");
+    expect(screen.getAllByRole("img")[0]).toHaveAttribute("src", "/products/mist.png");
     await user.click(screen.getByRole("button", { name: "41" }));
     await user.click(screen.getByRole("button", { name: "Clay" }));
-    expect(screen.getAllByRole("img")[0]).toHaveAttribute("src", "/products/clay.svg");
+    expect(screen.getAllByRole("img")[0]).toHaveAttribute("src", "/products/clay.png");
   });
 
   it("opens the cart drawer from the cart count", async () => {
@@ -99,5 +99,24 @@ describe("ProductPage", () => {
     await user.click(screen.getByRole("button", { name: "Cart contains 0 items" }));
     expect(screen.getByRole("dialog", { name: "Your bag" })).toBeVisible();
     expect(screen.getByText("Your bag is empty.")).toBeVisible();
+  });
+
+  it("lets the shopper retry a failed cart request without reloading", async () => {
+    let cartAttempts = 0;
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url.includes("/products/ridge-runner")) return response(product);
+      cartAttempts += 1;
+      return cartAttempts === 1
+        ? response({ error: { code: "INTERNAL_SERVER_ERROR", message: "Temporary failure" } }, 500)
+        : response({ cart_id: "demo-cart", item_count: 0, items: [] });
+    }));
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByRole("heading", { name: "Ridge Runner" });
+    await user.click(screen.getByRole("button", { name: "Cart contains 0 items" }));
+    expect(await screen.findByText("We could not load your bag.")).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("Your bag is empty.")).toBeVisible();
   });
 });

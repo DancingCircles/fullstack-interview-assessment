@@ -1,3 +1,5 @@
+import pytest
+
 from A.reservation_ledger import InventoryLedger, process_input
 
 
@@ -52,3 +54,20 @@ def test_open_reservations_are_sorted_and_zero_entries_removed() -> None:
     )
     assert result[-2:] == ["OPEN 1", "a-order 1"]
 
+
+@pytest.mark.parametrize(
+    "header",
+    ["1000000000001 1", "0 0", "0 200001", "0 +1", "0 1 extra"],
+)
+def test_header_constraints_are_strict(header: str) -> None:
+    with pytest.raises(ValueError):
+        process_input([header])
+
+
+def test_quantity_limit_and_ascii_token_validation_do_not_mutate_state() -> None:
+    ledger = InventoryLedger(on_hand=10)
+
+    assert ledger.process("RESERVE e1 order-1 1000000000001") == "REJECTED"
+    assert ledger.process("RESERVE e2 订单 1") == "REJECTED"
+    assert ledger.process("RESTOCK e3 1000000000001") == "REJECTED"
+    assert (ledger.on_hand, ledger.reserved, ledger.reservations) == (10, 0, {})
